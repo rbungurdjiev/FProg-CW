@@ -45,4 +45,13 @@ data Player = Bank | Guest
 size :: Hand -> Integer
 size hand = fromIntegral (length hand)
 
+-- Define a function faceCards :: Hand -&gt; Integer that returns the number of face cards in the hand.
 
+faceCards :: Hand -> Integer
+faceCards hand = fromIntegral . length $ filter isFaceCard hand
+  where
+    isFaceCard :: Card -> Bool
+    isFaceCard (Card {rank = Jack})  = True
+    isFaceCard (Card {rank = Queen}) = True
+    isFaceCard (Card {rank = King})  = True
+    isFaceCard _                     = False
