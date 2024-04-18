@@ -37,3 +37,12 @@ type Hand = [Card]
 
 data Player = Bank | Guest 
     deriving (Eq, Show)
+
+-- Functionality 
+
+-- Define a function size :: Hand -> Integer that returns the number of cards in the hand.
+
+size :: Hand -> Integer
+size hand = fromIntegral (length hand)
+
+
