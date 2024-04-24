@@ -164,4 +164,51 @@ playBank deck bankHand
         (deck', bankHand') = draw deck bankHand           -- Draw one card from the deck to the hand
 
 ----------------------------------------------------------
+--Fitst install
 
+--cabal update
+--cabal install HUnit
+--cabal install --lib HUnit
+
+
+----------TESTING-------------
+import Test.HUnit
+import Data.List
+
+-- Test data
+aceCard :: Card
+aceCard = Card Ace Hearts
+kingCard :: Card
+kingCard = Card King Spades
+numericCard5 :: Card
+numericCard5 = Card (Numeric 5) Diamonds
+handWithAces :: [Card]
+handWithAces = [aceCard, numericCard5, aceCard]
+handWithoutAces :: [Card]
+handWithoutAces = [kingCard, numericCard5]
+
+-- Test cases
+testValueRank = TestList [
+    TestCase (assertEqual "Ace should be 11" 11 (valueRank Ace)),
+    TestCase (assertEqual "King should be 10" 10 (valueRank King)),
+    TestCase (assertEqual "Numeric 5 should be 5" 5 (valueRank (Numeric 5)))
+  ]
+
+testValueCard = TestList [
+    TestCase (assertEqual "Value of Ace of Hearts should be 11" 11 (valueCard aceCard)),
+    TestCase (assertEqual "Value of King of Spades should be 10" 10 (valueCard kingCard)),
+    TestCase (assertEqual "Value of Numeric 5 of Diamonds should be 5" 5 (valueCard numericCard5))
+  ]
+
+testValueHand = TestList [
+    TestCase (assertEqual "Value of hand without Aces" 15 (valueHand handWithoutAces)),
+    TestCase (assertEqual "Value of hand with Aces before adjustment" 27 (valueHand handWithAces))
+  ]
+
+testValue = TestList [
+    TestCase (assertEqual "Adjusted value with Aces" 17 (value handWithAces)),
+    TestCase (assertEqual "Value without adjustment needed" 15 (value handWithoutAces))
+  ]
+
+-- Running all tests
+runTests = runTestTT $ TestList [testValueRank, testValueCard, testValueHand, testValue]
