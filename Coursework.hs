@@ -41,25 +41,27 @@ data Player = Bank | Guest
     deriving (Eq, Show)
 
 -- Functionality 
+
 --1
 -- Define a function size :: Hand -> Integer that returns the number of cards in the hand.
 
 size :: Hand -> Integer
-size hand = fromIntegral (length hand)
+size [] = 0
+size (_:xs) = 1 + size xs
+
 --2
--- Define a function faceCards :: Hand -&gt; Integer that returns the number of face cards in the hand.
+-- Define a function faceCards :: Hand -> Integer that returns the number of face cards in the hand.
 
 faceCards :: Hand -> Integer
-faceCards hand = fromIntegral . length $ filter isFaceCard hand
-  where
-    isFaceCard :: Card -> Bool
-    isFaceCard (Card {rank = Jack})  = True
-    isFaceCard (Card {rank = Queen}) = True
-    isFaceCard (Card {rank = King})  = True
-    isFaceCard _                     = False
+faceCards [] = 0
+faceCards (Card {rank = Jack}:xs)  = 1 + faceCards xs
+faceCards (Card {rank = Queen}:xs) = 1 + faceCards xs
+faceCards (Card {rank = King}:xs)  = 1 + faceCards xs
+faceCards (_:xs)                  = faceCards xs
 
 --3
-    -- Function to determine the value of a rank
+-- Define a function valueCard :: Card -> Integer that returns the numeric value of the card based on the rank.
+
 valueRank :: Rank -> Integer
 valueRank (Numeric n) = fromIntegral n
 valueRank Jack        = 10
@@ -68,42 +70,49 @@ valueRank King        = 10
 valueRank Ace         = 11
 
 --4
--- Function to determine the value of a card based on its rank
+-- Define a function valueCard :: Card -> Integer that returns the numeric value of the card based on the rank.
+
 valueCard :: Card -> Integer
 valueCard card = valueRank (rank card)
 
 --5
--- Function to count the number of Aces in a hand
+-- Define a function numberOfAces :: Hand -> Integer that returns the number of aces in a hand.
+
 numberOfAces :: Hand -> Integer
-numberOfAces hand = fromIntegral . length $ filter isAce hand
-    where
-        isAce :: Card -> Bool
-        isAce (Card {rank = Ace}) = True
-        isAce _                   = False
+numberOfAces [] = 0
+numberOfAces (Card {rank = Ace}:xs) = 1 + numberOfAces xs
+numberOfAces (_:xs) = numberOfAces xs
 
 --6
--- Function to calculate the total value of a hand
-valueHand :: Hand -> Integer
-valueHand hand = let
-        totalInitial = sum (map valueCard hand)  -- Calculate initial total value without ace adjustments
-        aceCount = numberOfAces hand            -- Count the number of Aces in the hand
-    in adjustForAces totalInitial aceCount    -- Adjust total value if needed
+-- Define a function valueHand :: Hand -> Integer that calculates the total value of a whole hand (add up each card's value).
 
--- Helper function to adjust the total value of the hand based on the number of Aces
-adjustForAces :: Integer -> Integer -> Integer
-adjustForAces total aces
-        | total > 21 && aces > 0 = adjustForAces (total - 10) (aces - 1)  -- Convert an Ace from 11 to 1
-        | otherwise = total
+valueHand :: Hand -> Integer
+valueHand [] = 0
+valueHand (card:xs) = valueCard card + valueHand xs
 
 --7
--- Function to calculate the total value of a hand, adjusting aces if the total exceeds 21
+-- Define a function value :: Hand -> Integer that calculates the total value of a hand but if the value
+-- exceeds 21, turn the hand's aces into 1s instead of 11s.
+
 value :: Hand -> Integer
-value hand = adjustForAces (sum (map valueCard hand)) (numberOfAces hand)
+value hand = adjustValue (valueHand hand) (numberOfAces hand)
+
+-- Function to adjust the value of the hand if it exceeds 21
+
+adjustValue :: Integer -> Integer -> Integer
+adjustValue total aces
+  | total > 21 && aces > 0   = adjustValue (total - 10) (aces - 1)  
+  | otherwise                = total
 
 --8
--- Function to determine if a hand is a blackjack
+-- Define a function isBlackjack :: Hand -> Bool that determines whether the hand forms a blackjack. A
+-- blackjack is hand with 2 cards that has the value of 21.
+
 isBlackjack :: Hand -> Bool
-isBlackjack hand = length hand == 2 && value hand == 21
+isBlackjack hand = case hand of
+    [card1, card2] -> valueHand hand == 21  
+    _              -> False
+
 
 --9
 -- Function to determine if a hand is over (loses by busting)
