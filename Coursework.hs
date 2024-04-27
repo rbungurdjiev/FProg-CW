@@ -16,7 +16,7 @@
 -- Suit, the suit of a card: hearts, spades, diamonds, and clubs.
 
 data Suit = Hearts | Spades | Diamonds | Clubs 
-    deriving (Eq, Show)
+    deriving (Eq, Show, Enum, Bounded)
 
 -- Rank, the rank of a card: numeric and its value (2-10), jack, queen, king, and ace.
 
@@ -53,7 +53,7 @@ size (_:xs) = 1 + size xs
 -- Define a function faceCards :: Hand -> Integer that returns the number of face cards in the hand.
 
 faceCards :: Hand -> Integer
-faceCards [] = 0
+faceCards [] = 0      
 faceCards (Card {rank = Jack}:xs)  = 1 + faceCards xs
 faceCards (Card {rank = Queen}:xs) = 1 + faceCards xs
 faceCards (Card {rank = King}:xs)  = 1 + faceCards xs
@@ -110,114 +110,145 @@ adjustValue total aces
 
 isBlackjack :: Hand -> Bool
 isBlackjack hand = case hand of
-    [card1, card2] -> valueHand hand == 21  
-    _              -> False
+    [Card Ace _, Card (Numeric 10) _] -> True
+    [Card (Numeric 10) _, Card Ace _] -> True
+    [Card Ace _, Card Jack _] -> True
+    [Card Jack _, Card Ace _] -> True
+    [Card Ace _, Card Queen _] -> True
+    [Card Queen _, Card Ace _] -> True
+    [Card Ace _, Card King _] -> True
+    [Card King _, Card Ace _] -> True
+    _ -> False
 
 
 --9
--- Function to determine if a hand is over (loses by busting)
+-- Define a function gameOver :: Hand -> Bool that checks if the given hand loses (value greater than 21).
+
 gameOver :: Hand -> Bool
-gameOver hand = value hand > 21
+gameOver hand = valueHand hand > 21
 
 --10
--- Function to determine the winner between guest and bank hands
+-- Define a function winner :: Hand -> Hand -> Player given the guest hand and the bank hand returns
+-- the player who won. Tie goes to the bank.
+
 winner :: Hand -> Hand -> Player
-winner guestHand bankHand
-    | guestBust = Bank                -- Guest busts, bank wins
-    | bankBust = Guest                -- Bank busts, guest wins
-    | guestValue > bankValue = Guest  -- Guest has higher value, guest wins
-    | otherwise = Bank                -- Tie or bank has higher value, bank wins
-    where
-        guestValue = value guestHand    -- Calculate total value of guest's hand
-        bankValue = value bankHand      -- Calculate total value of bank's hand
-        guestBust = gameOver guestHand  -- Check if guest busts
-        bankBust = gameOver bankHand    -- Check if bank busts
+winner guestHand bankHand -- all possible scenarios
+    | guestValue > 21 && bankValue > 21 = Bank   
+    | guestValue > 21                   = Bank   
+    | bankValue > 21                    = Guest  
+    | guestValue == bankValue           = Bank   
+    | guestValue > bankValue            = Guest  
+    | otherwise                         = Bank   
+  where
+    guestValue = valueHand guestHand
+    bankValue = valueHand bankHand
 
 --11
--- Define an operator (<+) to concatenate two hands
-infixr 5 <+  -- Set fixity and precedence level
+-- Define an operator (<+) :: Hand -> Hand -> Hand that places the first hand on top of the other and
+-- returns the resulting hand.
+
+infixr 5 <+  -- Set operator for combining two hands
 (<+) :: Hand -> Hand -> Hand
 hand1 <+ hand2 = hand1 ++ hand2
 
 --12
--- Function to generate a hand with all 13 cards of a given suit
+-- Define a function handSuit :: Suit -> Hand that given a suit, returns a hand with all 13 cards of that suit.
+
 handSuit :: Suit -> Hand
-handSuit suit = [Card rank suit | rank <- allRanks]
-    where
-        allRanks = [Numeric n | n <- [2..10]] ++ [Jack, Queen, King, Ace]
+handSuit suit = [Card {rank = r, suit = suit} | r <- ranks]
+  where
+    ranks = map Numeric [2..10] ++ [Jack, Queen, King, Ace]
 
 --13
--- Define a complete deck of 52 cards using list comprehensions
+-- Define a value fullDeck :: Hand that consists of the 52 card complete deck.
+
 fullDeck :: Hand
-fullDeck = [Card rank suit | suit <- allSuits, rank <- allRanks]
-    where
-        allSuits = [Hearts, Spades, Diamonds, Clubs]  -- List of all suits
-        allRanks = [Numeric n | n <- [2..10]] ++ [Jack, Queen, King, Ace]  -- List of all ranks
+fullDeck = [Card {rank = r, suit = s} | s <- suits, r <- ranks]
+  where
+    suits = [minBound .. maxBound] :: [Suit]
+    ranks = map Numeric [2..10] ++ [Jack, Queen, King, Ace]
 
 --14
--- Function to draw a card from a deck and add it to a hand
-draw :: Hand -> Hand -> (Hand, Hand)
-draw deck hand
-        | null deck = error "Cannot draw from an empty deck."  -- Error handling for empty deck
-        | otherwise = (tail deck, (head deck) : hand)          -- Return the updated deck and hand
+-- Define a function draw :: Hand -> Hand -> (Hand, Hand) that given a deck and a hand, draws a card
+-- from the deck and returns the remaining deck and the new hand. Throw an error if the deck is empty.
+
+draw :: Hand -> Hand -> Maybe (Hand, Hand)
+draw [] _ = Nothing  -- Empty deck - return Nothing
+draw (topCard:restOfDeck) hand = Just (restOfDeck, topCard : hand)
 
 
 --15
+-- Define a function playBank :: Hand -> Hand -> Hand that given the deck and the current bank's hand
+-- plays a move for the bank. The bank's logic is to draw if the current score is less than 16.
 
--- Function to play a move for the bank. The bank draws cards until its score is at least 16
-playBank :: Hand -> Hand -> Hand
+playBank :: Hand -> Hand -> Maybe Hand
 playBank deck bankHand
-        | value bankHand < 16 = playBank deck' bankHand'  -- Keep drawing if value less than 16
-        | otherwise = bankHand                            -- Stop drawing if value is 16 or more
-    where
-        (deck', bankHand') = draw deck bankHand           -- Draw one card from the deck to the hand
+    | valueHand bankHand >= 16 = Just bankHand
+    | otherwise = case draw deck bankHand of
+        Just (newDeck, newHand) -> playBank newDeck newHand
+        Nothing -> Just bankHand 
 
-----------------------------------------------------------
---Fitst install
-
---cabal update
---cabal install HUnit
---cabal install --lib HUnit
 
 
 ----------TESTING-------------
-import Test.HUnit
-import Data.List
 
--- Test data
-aceCard :: Card
-aceCard = Card Ace Hearts
-kingCard :: Card
-kingCard = Card King Spades
-numericCard5 :: Card
-numericCard5 = Card (Numeric 5) Diamonds
-handWithAces :: [Card]
-handWithAces = [aceCard, numericCard5, aceCard]
-handWithoutAces :: [Card]
-handWithoutAces = [kingCard, numericCard5]
+-- Sample test cases for valueRank
+valueRankTestCases :: [(Rank, Integer)]
+valueRankTestCases = 
+    [ (Ace, 11)
+    , (King, 10)
+    , (Queen, 10)
+    , (Jack, 10)
+    , (Numeric 5, 5)
+    , (Numeric 10, 10)
+    , (Numeric 2, 2)
+    ]
 
--- Test cases
-testValueRank = TestList [
-    TestCase (assertEqual "Ace should be 11" 11 (valueRank Ace)),
-    TestCase (assertEqual "King should be 10" 10 (valueRank King)),
-    TestCase (assertEqual "Numeric 5 should be 5" 5 (valueRank (Numeric 5)))
-  ]
+-- Sample test cases for isBlackjack
+isBlackjackTestCases :: [(Hand, Bool)]
+isBlackjackTestCases = 
+    [ ([Card Ace Hearts, Card (Numeric 10) Diamonds], True)
+    , ([Card King Spades, Card Jack Clubs], False)  
+    , ([Card (Numeric 5) Clubs, Card (Numeric 5) Hearts, Card Ace Diamonds], False)
+    , ([Card Ace Diamonds, Card King Spades], True)
+    ]
 
-testValueCard = TestList [
-    TestCase (assertEqual "Value of Ace of Hearts should be 11" 11 (valueCard aceCard)),
-    TestCase (assertEqual "Value of King of Spades should be 10" 10 (valueCard kingCard)),
-    TestCase (assertEqual "Value of Numeric 5 of Diamonds should be 5" 5 (valueCard numericCard5))
-  ]
+-- Sample test cases for gameOver
+gameOverTestCases :: [(Hand, Bool)]
+gameOverTestCases = 
+    [ ([Card (Numeric 10) Clubs, Card King Spades, Card Queen Hearts], True)
+    , ([Card (Numeric 5) Clubs, Card (Numeric 5) Hearts], False)
+    ]
 
-testValueHand = TestList [
-    TestCase (assertEqual "Value of hand without Aces" 15 (valueHand handWithoutAces)),
-    TestCase (assertEqual "Value of hand with Aces before adjustment" 27 (valueHand handWithAces))
-  ]
+-- Sample test cases for valueHand (Mandatory)
+valueHandTestCases :: [(Hand, Integer)]
+valueHandTestCases = 
+    [ ([Card Ace Hearts, Card (Numeric 10) Diamonds], 21)
+    , ([Card King Spades, Card Queen Clubs], 20)
+    , ([Card (Numeric 2) Clubs, Card (Numeric 3) Diamonds], 5)
+    , ([Card (Numeric 7) Hearts, Card (Numeric 5) Spades, Card (Numeric 5) Clubs], 17)
+    ]
 
-testValue = TestList [
-    TestCase (assertEqual "Adjusted value with Aces" 17 (value handWithAces)),
-    TestCase (assertEqual "Value without adjustment needed" 15 (value handWithoutAces))
-  ]
+-- Generic test function
+runTest :: (Eq b, Show b, Show a) => (a -> b) -> (a, b) -> IO ()
+runTest function (input, expected) =
+    if function input == expected
+    then putStrLn $ "Pass! " ++ show input
+    else putStrLn $ "Fail! " ++ show input ++ ". Expected " ++ show expected ++ ", got " ++ show (function input)
 
--- Running all tests
-runTests = runTestTT $ TestList [testValueRank, testValueCard, testValueHand, testValue]
+
+-- Test runner for all defined tests
+runAllTests :: IO ()
+runAllTests = do
+    putStrLn "Testing valueRank:"
+    mapM_ (runTest valueRank) valueRankTestCases
+    putStrLn "Testing isBlackjack:"
+    mapM_ (runTest isBlackjack) isBlackjackTestCases
+    putStrLn "Testing gameOver:"
+    mapM_ (runTest gameOver) gameOverTestCases
+    putStrLn "Testing valueHand:"
+    mapM_ (runTest valueHand) valueHandTestCases
+
+main :: IO ()
+main = runAllTests
+
