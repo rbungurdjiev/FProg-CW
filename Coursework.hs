@@ -11,6 +11,10 @@
 
 -- BLACKJACK  GAME IMPLEMENTATION 
 
+-- importing Data.Maybe for later usage
+
+import Data.Maybe
+
 -- Types
 
 -- Suit, the suit of a card: hearts, spades, diamonds, and clubs.
@@ -252,3 +256,85 @@ runAllTests = do
 main :: IO ()
 main = runAllTests
 
+
+--------Employee Queries-------
+
+-- Provided code
+
+type EId = String
+
+data Date = Date { year :: Int, month :: Int, day :: Int }
+    deriving (Show, Eq)
+
+instance Ord Date where
+   compare :: Date -> Date -> Ordering
+   compare (Date y1 m1 d1) (Date y2 m2 d2)
+    | y1 /= y2 = compare y1 y2
+    | m1 /= m2 = compare m1 m2
+    | otherwise = compare d1 d2
+
+data WorkPermit = Permit { number :: String, expiryDate :: Date }
+    deriving (Show, Eq)
+
+data Employee = Emp
+  {
+    empId :: EId,
+    joinedOn :: Date,
+    permit :: Maybe WorkPermit,
+    leftOn :: Maybe Date
+  }
+  deriving (Show, Eq)
+
+type EmployeeMap = [(EId, Employee)]
+
+differenceInYears :: Date -> Date -> Int
+differenceInYears (Date year1 _ _) (Date year2 _ _) = abs $ year1 - year2
+
+-- Continuing code
+
+--1
+-- A function employeesToIdMap :: [Employee] -> EmployeeMap that pairs each employee with their id.
+
+employeesToIdMap :: [Employee] -> EmployeeMap
+employeesToIdMap employees = [(empId emp, emp) | emp <- employees]
+
+--2
+-- A function getWorkPermit :: EId -> EmployeeMap -> Maybe WorkPermit that given an employee id
+-- returns the work permit.
+
+getWorkPermit :: EId -> EmployeeMap -> Maybe WorkPermit
+getWorkPermit empId empMap = lookup empId empMap >>= permit
+
+
+--3
+-- A function witNoPermit :: [Employee] -> [Employee] that returns employees that do not have a
+-- permit.
+
+withNoPermit :: [Employee] -> [Employee]
+withNoPermit employees = [emp | emp <- employees, isNothing (permit emp)]
+
+--4
+-- A function withExpiredPermit :: [Employee] -> Date -> [EId] that given the current date returns the
+-- ids of employees with an expired permit. You can compare dates with the operators (<, >=).
+
+withExpiredPermit :: [Employee] -> Date -> [EId]
+withExpiredPermit employees currentDate = 
+    [ empId emp
+    | emp <- employees
+    , Just permit <- [permit emp]  
+    , expiryDate permit < currentDate  
+    ]
+
+--5
+-- A function avgYearsWorked :: [Employee] -> Double that returns the average years an employee
+-- worked in the company. Consider only employees who have left. (In Haskell if you want to do real
+-- number division to get a double using / and you have integers, there might need to be a conversion
+-- using the built-in function fromIntegral which makes an integer a more general number. 
+
+avgYearsWorked :: [Employee] -> Double
+avgYearsWorked employees =
+    let left = [emp | emp <- employees, Just leftDate <- [leftOn emp]]
+        yearsWorked = [differenceInYears (joinedOn emp) leftDate | emp <- left, Just leftDate <- [leftOn emp]]
+        totalYears = sum (map fromIntegral yearsWorked)
+        count = fromIntegral (length yearsWorked)
+    in if count > 0 then totalYears / count else 0.0
